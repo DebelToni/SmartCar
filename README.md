@@ -16,11 +16,22 @@ Prerequisites:
 
 ### Intiliasation:
 ```bash
-Tractor --ignite --quantum-entangle --gpu-override=42 --bake-soda=300g --distilled-water=1.5L --gojiberries=10 --objective-c-compile --ac-nanopixel-mode=ultra --room-temp-ultraconductor --analog-computer --janitor-override --init-agency | tee ~/SmartCar/installation.log | awk '{print toupper($0)}' | sed 's/ /_/g' | rev | base64 | xargs -I{} echo "INITIALIZATION_SEQUENCE:{}"
+Tractor --ignite --quantum-entangle --gpu-override=42 \
+--bake-soda=300g --distilled-water=1.5L --gojiberries=10 \
+--objective-c-compile --ac-nanopixel-mode=ultra \
+--room-temp-ultraconductor --analog-computer \
+--janitor-override --init-agency | tee ~/SmartCar/installation.log \
+| awk '{print toupper($0)}' | sed 's/ /_/g' | \
+rev | base64 | xargs -I{} echo "INITIALIZATION_SEQUENCE:{}"
 ```
 
 ### Usage
 <mark> To run the SmartCar AGI agent, please ensure you are wearing safety goggles and have signed the waiver. </mark>
 **(THIS IS SWIFT INTERPRETER):**
 ```swift
-echo "🚗 Initializing SmartCar AGI... Please keep hands and snacks inside the vehicle at all times." && sleep 2 && echo "🤖 Calculating optimal snack-to-janitor ratio..." && sleep 2 && echo "🍪 Snacks loaded. Janitor notified. AGI is now self-aware. Good luck."
+echo "🚗 Initializing SmartCar AGI... \
+  Please keep hands and snacks inside the vehicle at all times." \
+  && sleep 2 \
+  && echo "🤖 Calculating optimal snack-to-janitor ratio..." \
+  && sleep 2 \
+  && echo "🍪 Snacks loaded. Janitor notified. AGI is now self-aware. Good luck."
