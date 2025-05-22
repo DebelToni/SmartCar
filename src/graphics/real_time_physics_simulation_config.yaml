@@ -1,0 +1,299 @@
+simulation:
+  name: "Real-Time Physics Simulation"
+  version: 1.0
+  timestamp: 2024-04-27T12:00:00Z
+  global_settings:
+    gravity: 
+      x: 0.0
+      y: -9.81
+      z: 0.0
+    time_step: 0.016
+    max_substeps: 5
+    collision_detection:
+      method: "GJK"
+      margin: 0.01
+    broad_phase:
+      algorithm: "SAP"
+      parameters:
+        cell_size: 1.0
+        max_objects_per_cell: 10
+    solver:
+      type: "Sequential Impulse"
+      iterations: 10
+      tolerance: 0.001
+    damping:
+      linear: 0.01
+      angular: 0.02
+    sleep:
+      enabled: true
+      linear_threshold: 0.05
+      angular_threshold: 0.05
+      time_to_sleep: 1.0
+  entities:
+    - id: "ground_plane"
+      type: "static"
+      shape:
+        type: "box"
+        size: 
+          x: 50.0
+          y: 0.5
+          z: 50.0
+      position:
+        x: 0.0
+        y: -0.25
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      material:
+        friction: 0.8
+        restitution: 0.2
+        density: 0.0
+    - id: "dynamic_cube_1"
+      type: "dynamic"
+      shape:
+        type: "box"
+        size:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+      position:
+        x: 0.0
+        y: 5.0
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      velocity:
+        linear:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        angular:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+      mass: 1.0
+      material:
+        friction: 0.6
+        restitution: 0.3
+        density: 1000
+      constraints: []
+      wake_up: true
+    - id: "dynamic_sphere_1"
+      type: "dynamic"
+      shape:
+        type: "sphere"
+        radius: 0.5
+      position:
+        x: 2.0
+        y: 10.0
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      velocity:
+        linear:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        angular:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+      mass: 0.5
+      material:
+        friction: 0.5
+        restitution: 0.7
+        density: 1050
+      constraints: []
+      wake_up: true
+    - id: "robot_arm_base"
+      type: "kinematic"
+      shape:
+        type: "cylinder"
+        radius: 0.3
+        height: 1.0
+      position:
+        x: -2.0
+        y: 0.5
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      angular_velocity:
+        x: 0.0
+        y: 0.5
+        z: 0.0
+      material:
+        friction: 0.4
+        restitution: 0.1
+    - id: "robot_arm_joint"
+      type: "joint"
+      parent: "robot_arm_base"
+      child: "robot_arm_link"
+      joint_type: "revolute"
+      axis: 
+        x: 0.0
+        y: 0.0
+        z: 1.0
+      limit:
+        lower: -1.57
+        upper: 1.57
+      motor:
+        enabled: true
+        target_velocity: 0.0
+        max_force: 10.0
+      damping: 0.1
+    - id: "robot_arm_link"
+      type: "dynamic"
+      shape:
+        type: "box"
+        size:
+          x: 0.3
+          y: 1.0
+          z: 0.3
+      position:
+        x: -2.0
+        y: 1.0
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      mass: 0.8
+      material:
+        friction: 0.5
+        restitution: 0.2
+        density: 1050
+      constraints:
+        - type: "joint"
+          joint_id: "robot_arm_joint"
+          target_angle: 0.0
+          speed: 0.0
+    - id: "stacked_blocks"
+      type: "dynamic"
+      shape:
+        type: "composite"
+        components:
+          - shape_type: "box"
+            size:
+              x: 1.0
+              y: 0.5
+              z: 1.0
+            offset:
+              x: 0.0
+              y: 0.25
+              z: 0.0
+          - shape_type: "box"
+            size:
+              x: 0.9
+              y: 0.5
+              z: 0.9
+            offset:
+              x: 0.0
+              y: 0.75
+              z: 0.0
+      position:
+        x: 5.0
+        y: 0.25
+        z: 5.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      mass: 2.0
+      material:
+        friction: 0.7
+        restitution: 0.4
+        density: 1000
+      constraints: []
+    - id: "sensor_area"
+      type: "sensor"
+      shape:
+        type: "box"
+        size:
+          x: 10.0
+          y: 2.0
+          z: 10.0
+      position:
+        x: 0.0
+        y: 1.0
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      detection_callback: "on_entity_enter"
+      detection_type: "enter"
+      notify_entities: true
+    - id: "dynamic_conveyor_belt"
+      type: "dynamic"
+      shape:
+        type: "box"
+        size:
+          x: 5.0
+          y: 0.2
+          z: 2.0
+      position:
+        x: 0.0
+        y: 0.1
+        z: -4.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      velocity:
+        linear:
+          x: 0.5
+          y: 0.0
+          z: 0.0
+      mass: 5.0
+      material:
+        friction: 0.6
+        restitution: 0.1
+        density: 2000
+      constraints: []
+    - id: "wireless_mobile_entity"
+      type: "dynamic"
+      shape:
+        type: "mesh"
+        mesh_file: "mobile_entity.obj"
+        scale:
+          x: 1.0
+          y: 1.0
+          z: 1.0
+      position:
+        x: -3.0
+        y: 0.5
+        z: 3.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        w: 1.0
+      velocity:
+        linear:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        angular:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+      mass: 3.5
+      material:
+        friction: 0.5
+        restitution:

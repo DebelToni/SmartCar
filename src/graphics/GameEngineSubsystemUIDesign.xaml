@@ -1,0 +1,108 @@
+<Window x:Class="GameEngineSubsystem.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Game Engine Subsystem" Height="800" Width="1200" Background="#1E1E1E" WindowState="Maximized">
+    <Grid>
+        <Grid.Resources>
+            <Style x:Key="RenderableObjectStyle" TargetType="Border">
+                <Setter Property="BorderBrush" Value="#00FF00"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="CornerRadius" Value="4"/>
+                <Setter Property="Background" Value="#222"/>
+            </Style>
+            <Style x:Key="UIElementStyle" TargetType="Border">
+                <Setter Property="Background" Value="#333"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Margin" Value="4"/>
+            </Style>
+            <DataTemplate x:Key="ObjectTemplate">
+                <Border Style="{StaticResource RenderableObjectStyle}">
+                    <Grid>
+                        <Ellipse Width="20" Height="20" Fill="{Binding Color}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                        <TextBlock Text="{Binding Name}" Foreground="#FFF" Margin="5" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </Grid.Resources>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition Width="2*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="50"/>
+        </Grid.RowDefinitions>
+        <Canvas Grid.Column="0" Grid.Row="0" x:Name="GameCanvas" Background="#111" ClipToBounds="True">
+            <Rectangle x:Name="ViewportBorder" Stroke="#555" StrokeThickness="2" Width="Auto" Height="Auto"/>
+        </Canvas>
+        <StackPanel Grid.Column="1" Grid.Row="0" Orientation="Vertical" Margin="8" Background="#222" CornerRadius="8">
+            <TextBlock Text="Scene Objects" FontWeight="Bold" Foreground="#FFF" Margin="4"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="ObjectList" ItemTemplate="{StaticResource ObjectTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+        <Border Grid.Column="1" Grid.Row="1" Background="#333" CornerRadius="8" Margin="8" Padding="4">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Button x:Name="AddObjectButton" Content="Add Object" Width="100" Margin="4"/>
+                <Button x:Name="RemoveObjectButton" Content="Remove Selected" Width="120" Margin="4"/>
+                <Button x:Name="ResetSceneButton" Content="Reset Scene" Width="100" Margin="4"/>
+                <ToggleButton x:Name="PauseToggle" Content="Pause" Width="80" Margin="4"/>
+            </StackPanel>
+        </Border>
+        <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Center" Margin="8">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Camera Position:" Foreground="#CCC" Margin="4"/>
+                <Slider x:Name="CameraXSlider" Minimum="-100" Maximum="100" Value="0" Width="150" Margin="4"/>
+                <Slider x:Name="CameraYSlider" Minimum="-100" Maximum="100" Value="0" Width="150" Margin="4"/>
+                <Slider x:Name="CameraZoomSlider" Minimum="0.5" Maximum="3" Value="1" Width="150" Margin="4"/>
+            </StackPanel>
+        </StackPanel>
+        <Grid x:Name="DebugOverlay" Grid.ColumnSpan="2" Grid.RowSpan="2" IsHitTestVisible="False">
+            <Canvas>
+                <TextBlock x:Name="DebugText" Foreground="#FFF" FontSize="12" Margin="10"/>
+            </Canvas>
+        </Grid>
+        <Storyboard x:Key="FadeInStoryboard">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:1"/>
+        </Storyboard>
+        <Storyboard x:Key="FadeOutStoryboard">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:1"/>
+        </Storyboard>
+        <Grid.Triggers>
+            <EventTrigger RoutedEvent="Loaded">
+                <BeginStoryboard Storyboard="{StaticResource FadeInStoryboard}"/>
+            </EventTrigger>
+        </Grid.Triggers>
+        <Grid x:Name="MainOverlay" Opacity="0" Background="#80000000" Visibility="Collapsed"/>
+        <Popup x:Name="ObjectPropertiesPopup" Placement="Mouse" IsOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+            <Border Background="#444" CornerRadius="8" Padding="8">
+                <StackPanel>
+                    <TextBlock Text="Object Properties" Foreground="#FFF" FontWeight="Bold" Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Name:" Foreground="#CCC" Width="60"/>
+                        <TextBox x:Name="ObjectNameTextBox" Width="150"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Color:" Foreground="#CCC" Width="60"/>
+                        <Rectangle Width="30" Height="30" Fill="{Binding SelectedObject.Color}" Stroke="#FFF" StrokeThickness="1"/>
+                        <Button Content="Choose..." Width="80" Margin="4,0,0,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Size:" Foreground="#CCC" Width="60"/>
+                        <Slider x:Name="ObjectSizeSlider" Minimum="1" Maximum="100" Width="150"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+                        <Button x:Name="ApplyPropertiesButton" Content="Apply" Width="80" Margin="4"/>
+                        <Button x:Name="CancelPropertiesButton" Content="Cancel" Width="80" Margin="4"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</Window>

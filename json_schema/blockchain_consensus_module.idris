@@ -1,0 +1,255 @@
+module Consensus
+
+import Data.List
+import Data.Maybe
+import Data.Fin
+import Data.Vect
+import Data.Nat
+import Data.FinFun
+import Control.Monad
+import Data.Either
+import Data.String
+import Data.HashMap
+import Data.Bytes
+import Data.Time
+import Prelude
+
+%default total
+
+record BlockHeader where
+  constructor MkBlockHeader
+  parentHash   : Bytes
+  timestamp    : Time
+  nonce        : Nat
+  validator    : ValidatorId
+  blockHash    : Bytes
+
+record Block where
+  constructor MkBlock
+  header       : BlockHeader
+  transactions : List Transaction
+
+record Transaction where
+  constructor MkTransaction
+  sender       : Address
+  recipient    : Address
+  amount       : Nat
+  signature    : Bytes
+
+record ValidatorId where
+  constructor MkValidatorId
+  id         : Bytes
+  publicKey  : Bytes
+
+record ValidatorStake where
+  constructor MkValidatorStake
+  validator    : ValidatorId
+  stakeAmount  : Nat
+  lastActive   : Time
+
+record ConsensusState where
+  constructor MkConsensusState
+  chain          : List Block
+  currentTip     : Block
+  validatorSet   : List ValidatorStake
+  pendingBlocks  : List Block
+  votes          : HashMap Bytes Vote
+  blockTimeout   : Nat
+  lastProposalTs : Time
+  lockVotes      : HashMap Bytes ValidatorId
+
+data VoteType = Prevote | Precommit
+
+record Vote where
+  constructor MkVote
+  voter      : ValidatorId
+  blockHash  : Bytes
+  voteType   : VoteType
+  timestamp  : Time
+
+totalValidators : List ValidatorStake -> Nat
+totalValidators vset = length vset
+
+isValidatorActive : ValidatorStake -> Time -> Bool
+isValidatorActive vset currentTime =
+  timeDiff vset.lastActive currentTime < 600
+
+getValidatorById : List ValidatorStake -> ValidatorId -> Maybe ValidatorStake
+getValidatorById vset vid = find (\v -> v.validator.id == vid.id) vset
+
+calculateStakeWeight : ValidatorStake -> Nat
+calculateStakeWeight v = v.stakeAmount
+
+selectProposer : List ValidatorStake -> Time -> Maybe ValidatorStake
+selectProposer vset currentTime =
+  maximumBy (\a b => compare (calculateStakeWeight a) (calculateStakeWeight b))
+            (filter (\v => isValidatorActive v currentTime) vset)
+
+hashBlockHeader : BlockHeader -> Bytes
+hashBlockHeader header =
+  bytesConcat [header.parentHash, show header.timestamp, show header.nonce, header.validator.id]
+
+createBlockHash : BlockHeader -> Bytes
+createBlockHash header =
+  sha256 (hashBlockHeader header)
+
+verifySignature : Bytes -> Bytes -> Bytes -> Bool
+verifySignature pubKey message signature =
+  -- Placeholder for cryptographic verification
+  True
+
+validateTransaction : Transaction -> List ValidatorStake -> Bool
+validateTransaction tx vset =
+  verifySignature (getValidatorPubKey tx.sender vset) (serializeTransaction tx) tx.signature
+
+getValidatorPubKey : Address -> List ValidatorStake -> Bytes
+getValidatorPubKey addr vset =
+  case find (\v -> v.validator.id == addr) vset of
+    Just v => v.validator.publicKey
+    Nothing => Bytes.empty
+
+serializeTransaction : Transaction -> Bytes
+serializeTransaction tx =
+  bytesConcat [tx.sender, tx.recipient, show tx.amount]
+
+validateBlock : Block -> List ValidatorStake -> Bool
+validateBlock block vset =
+  let header = block.header
+      parentHashValid = header.parentHash == (maybe (Bytes.empty) block.header.parentHash (listToMaybe (getTipChain block)))
+      blockHashValid = createBlockHash header == header.blockHash
+      proposerValid = case getValidatorById vset header.validator of
+                        Just v => isValidatorActive v (header.timestamp)
+                        Nothing => False
+  in parentHashValid && blockHashValid && proposerValid
+
+getTipChain : Block -> List Block
+getTipChain block =
+  -- Placeholder for chain retrieval
+  []
+
+applyTransaction : Transaction -> State -> Maybe State
+applyTransaction tx state =
+  if validateTransaction tx state.validatorSet then
+    Just state -- Placeholder for state update logic
+  else
+    Nothing
+
+proposeBlock : ConsensusState -> ValidatorStake -> List Transaction -> Time -> Block
+proposeBlock state validator pendingTxs currentTime =
+  let parentHeader = state.currentTip.header
+      newHeader = MkBlockHeader
+        parentHeader.parentHash
+        currentTime
+        (parentHeader.nonce + 1)
+        validator.validator
+        Bytes.empty
+      newBlock = MkBlock
+        newHeader
+        pendingTxs
+  in newBlock
+
+castVote : VoteType -> Bytes -> ValidatorStake -> Time -> Vote
+castVote vtype blkHash validator currentTime =
+  MkVote validator.validator vtype blkHash currentTime
+
+collectVotes : List Vote -> HashMap Bytes Vote
+collectVotes votes =
+  foldl insertVote empty votes
+  where
+    insertVote acc vote = insert acc vote.blockHash vote
+
+determineBlockFinality : HashMap Bytes Vote -> List ValidatorStake -> Bytes -> Bool
+determineBlockFinality voteMap vset blkHash =
+  let votesForBlk = lookupDefault empty blkHash voteMap
+      counts = countVotes votesForBlk vset
+  in counts >= (length vset `div` 2) + 1
+
+countVotes : List Vote -> List ValidatorStake -> Nat
+countVotes votes vset =
+  foldl (\acc v -> if any (\vote -> vote.voter.id == v.validator.id) votes then acc + 1 else acc) 0 vset
+
+updateConsensusState : ConsensusState -> List Vote -> ConsensusState
+updateConsensusState state votes =
+  let voteMap = collectVotes votes
+      latestVotes = toList voteMap
+  in foldl (processVote state) state latestVotes
+
+processVote : ConsensusState -> Vote -> ConsensusState
+processVote state vote =
+  if determineBlockFinality state.votes state.validatorSet vote.blockHash then
+    finalizeBlock state vote.blockHash
+  else
+    state
+
+finalizeBlock : ConsensusState -> Bytes -> ConsensusState
+finalizeBlock state blkHash =
+  case find (\b => b.header.blockHash == blkHash) state.pendingBlocks of
+    Just block => 
+      let newChain = state.chain ++ [block]
+          newTip = block
+          newVotes = empty
+      in MkConsensusState newChain newTip state.validatorSet [] newVotes state.blockTimeout state.lastProposalTs state.lockVotes
+    Nothing => state
+
+periodicPropose : ConsensusState -> Time -> ConsensusState
+periodicPropose state currentTime =
+  case selectProposer state.validatorSet currentTime of
+    Just proposer =>
+      let pendingTxs = [] -- Placeholder for pending transactions
+          newBlock = proposeBlock state proposer pendingTxs currentTime
+          newPendingBlocks = state.pendingBlocks ++ [newBlock]
+      in MkConsensusState state.chain state.currentTip state.validatorSet newPendingBlocks state.votes state.blockTimeout currentTime state.lockVotes
+    Nothing => state
+
+processTimeouts : ConsensusState -> Time -> ConsensusState
+processTimeouts state currentTime =
+  if (timeDiff state.lastProposalTs currentTime > state.blockTimeout) then
+    periodicPropose state currentTime
+  else
+    state
+
+updateValidators : List ValidatorStake -> List ValidatorStake
+updateValidators vset =
+  filter (\v -> v.stakeAmount > 0) vset
+
+stakeValidator : ValidatorId -> Nat -> Time -> List ValidatorStake -> List ValidatorStake
+stakeValidator vid amount currentTime vset =
+  let validator = MkValidatorStake vid amount currentTime
+  in validator :: vset
+
+unstakeValidator : ValidatorId -> List ValidatorStake -> List ValidatorStake
+unstakeValidator vid vset =
+  filter (\v => v.validator.id /= vid.id) vset
+
+addTransaction : Transaction -> List Transaction -> List Transaction
+addTransaction tx txs = tx :: txs
+
+initializeConsensus : List ValidatorStake -> Time -> ConsensusState
+initializeConsensus vset currentTime =
+  let genesisBlockHeader = MkBlockHeader Bytes.empty currentTime 0 (MkValidatorId Bytes.empty) Bytes.empty
+      genesisBlock = MkBlock genesisBlockHeader []
+  in MkConsensusState [genesisBlock] genesisBlock vset [] empty 10 currentTime empty
+
+verifyBlockHeader : BlockHeader -> List ValidatorStake -> Bool
+verifyBlockHeader header vset =
+  verifySignature (getValidatorPubKey header.validator vset) (bytesConcat [header.parentHash, show header.timestamp, show header.nonce, header.validator.id]) header.validator.publicKey
+
+processNewBlock : Block -> ConsensusState -> List ValidatorStake -> ConsensusState
+processNewBlock newBlock state vset =
+  if validateBlock newBlock vset then
+    let newChain = state.chain ++ [newBlock]
+        newTip = newBlock
+        newPending = delete newBlock state.pendingBlocks
+    in MkConsensusState newChain newTip vset newPending state.votes state.blockTimeout state.lastProposalTs state.lockVotes
+  else
+    state
+
+adjustTimeout : ConsensusState -> Nat -> ConsensusState
+adjustTimeout state newTimeout =
+  MkConsensusState state.chain state.currentTip state.validatorSet state.pendingBlocks state.votes newTimeout state.lastProposalTs state.lockVotes
+
+manageValidatorSet : List ValidatorStake -> List ValidatorStake
+manageValidatorSet vset =
+  filter (\v => v.stakeAmount >= 1000) vset
+
+pauseValidator : Validator
