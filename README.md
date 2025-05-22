@@ -2,6 +2,11 @@
 This is the project for the Autonomous Machine learning Agent.
 The Reinforcement Learning Artificial General Intelligence (AGI) agent is powerd by the latest State-of-the-Art Air Conditioning (AC) Nanopixel technology.
 
+---
+
+The project is based on the latest research in the field of blockchain-agriculture and dynamic expansion of the metaverse in the Muchentuchen University of Papua New Guinea.
+
+
 > Note: Any inconsistencies caused by the Quantum Entanglement of the liquidation of the room temperature ULTRAconductor in the analog computer system are not the responsibility of the janitor.
 
 ## Installation
