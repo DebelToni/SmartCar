@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dynamic Plugin Loader</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; background-color: #f0f0f0; }
+  #pluginContainer { display: flex; flex-wrap: wrap; gap: 20px; }
+  .plugin { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 16px; width: 300px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s; position: relative; }
+  .plugin:hover { transform: translateY(-5px); }
+  .plugin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .plugin-title { font-weight: bold; font-size: 1.2em; }
+  .plugin-status { font-size: 0.9em; padding: 4px 8px; border-radius: 4px; color: #fff; }
+  .status-active { background-color: #4CAF50; }
+  .status-inactive { background-color: #F44336; }
+  .plugin-content { margin-top: 8px; }
+  button { padding: 6px 12px; margin-top: 8px; cursor: pointer; border: none; border-radius: 4px; font-size: 0.9em; }
+  button:disabled { background-color: #ccc; cursor: not-allowed; }
+  #addPluginBtn { margin-bottom: 20px; padding: 10px 20px; font-size: 1em; cursor: pointer; }
+  #pluginModal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+  #pluginModalContent { background-color: #fff; margin: 10% auto; padding: 20px; border-radius: 8px; width: 400px; position: relative; }
+  #closeModal { position: absolute; top: 10px; right: 15px; font-size: 1.2em; cursor: pointer; }
+  .modal-field { margin-bottom: 12px; display: flex; flex-direction: column; }
+  .modal-field label { margin-bottom: 4px; font-weight: bold; }
+  #errorMsg { color: red; margin-top: 10px; font-size: 0.9em; display: none; }
+</style>
+</head>
+<body>
+<button id="addPluginBtn">Add New Plugin</button>
+<div id="pluginContainer"></div>
+<div id="pluginModal">
+  <div id="pluginModalContent">
+    <span id="closeModal">&times;</span>
+    <h2>Add Plugin</h2>
+    <div class="modal-field">
+      <label for="pluginName">Plugin Name</label>
+      <input type="text" id="pluginName" />
+    </div>
+    <div class="modal-field">
+      <label for="pluginScript">Script URL</label>
+      <input type="text" id="pluginScript" />
+    </div>
+    <div class="modal-field">
+      <label for="pluginConfig">Configuration (JSON)</label>
+      <textarea id="pluginConfig" rows="4"></textarea>
+    </div>
+    <button id="savePluginBtn">Save Plugin</button>
+    <div id="errorMsg"></div>
+  </div>
+</div>
+<script>
+  const pluginContainer = document.getElementById('pluginContainer');
+  const addPluginBtn = document.getElementById('addPluginBtn');
+  const pluginModal = document.getElementById('pluginModal');
+  const closeModal = document.getElementById('closeModal');
+  const savePluginBtn = document.getElementById('savePluginBtn');
+  const pluginNameInput = document.getElementById('pluginName');
+  const pluginScriptInput = document.getElementById('pluginScript');
+  const pluginConfigInput = document.getElementById('pluginConfig');
+  const errorMsg = document.getElementById('errorMsg');
+
+  let plugins = [];
+
+  function createPluginElement(plugin, index) {
+    const pluginDiv = document.createElement('div');
+    pluginDiv.className = 'plugin';
+    pluginDiv.dataset.index = index;
+
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'plugin-header';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'plugin-title';
+    titleSpan.textContent = plugin.name;
+
+    const statusSpan = document.createElement('span');
+    statusSpan.className = 'plugin-status ' + (plugin.active ? 'status-active' : 'status-inactive');
+    statusSpan.textContent = plugin.active ? 'Active' : 'Inactive';
+
+    headerDiv.appendChild(titleSpan);
+    headerDiv.appendChild(statusSpan);
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.textContent = plugin.active ? 'Deactivate' : 'Activate';
+    toggleBtn.onclick = () => {
+      plugin.active = !plugin.active;
+      updatePluginDisplay(pluginDiv, plugin);
+    };
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'Remove';
+    removeBtn.onclick = () => {
+      plugins.splice(index, 1);
+      renderPlugins();
+    };
+
+    const controlDiv = document.createElement('div');
+    controlDiv.style.display = 'flex'; controlDiv.style.gap = '8px'; controlDiv.style.marginTop='8px';
+    controlDiv.appendChild(toggleBtn);
+    controlDiv.appendChild(removeBtn);
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'plugin-content';
+
+    if (plugin.loaded) {
+      const iframe = document.createElement('iframe');
+      iframe.src = plugin.scriptUrl;
+      iframe.style.width = '100%';
+      iframe.style.height = '150px';
+      iframe.onload = () => { iframe.contentWindow.postMessage({config: plugin.config}, '*'); };
+      contentDiv.appendChild(iframe);
+    } else {
+      contentDiv.textContent = 'Plugin not loaded.';
+    }
+
+    pluginDiv.appendChild(headerDiv);
+    pluginDiv.appendChild(controlDiv);
+    pluginDiv.appendChild(contentDiv);
+
+    return pluginDiv;
+  }
+
+  function updatePluginDisplay(pluginDiv, plugin) {
+    const statusSpan = pluginDiv.querySelector('.plugin-status');
+    const toggleBtn = pluginDiv.querySelectorAll('button')[0];
+    statusSpan.textContent = plugin.active ? 'Active' : 'Inactive';
+    statusSpan.className = 'plugin-status ' + (plugin.active ? 'status-active' : 'status-inactive');
+    toggleBtn.textContent = plugin.active ? 'Deactivate' : 'Activate';
+  }
+
+  function renderPlugins() {
+    pluginContainer.innerHTML = '';
+    plugins.forEach((plugin, index) => {
+      const pluginEl = createPluginElement(plugin, index);
+      pluginContainer.appendChild(pluginEl);
+    });
+  }
+
+  function loadPlugin(plugin) {
+    if (plugin.loaded) return;
+    const script = document.createElement('script');
+    script.src = plugin.scriptUrl;
+    script.onload = () => {
+      plugin.loaded = true;
+      renderPlugins();
+    };
+    script.onerror = () => {
+      alert('Failed to load plugin script: ' + plugin.scriptUrl);
+    };
+    document.head.appendChild(script);
+  }
+
+  addPluginBtn.onclick = () => {
+    pluginNameInput.value = '';
+    pluginScriptInput.value = '';
+    pluginConfigInput.value = '';
+    errorMsg.style.display = 'none';
+    pluginModal.style.display = 'block';
+  };
+
+  closeModal.onclick = () => {
+    pluginModal.style.display = 'none';
+  };
+
+  window.onclick = (event) => {
+    if (event.target == pluginModal) {
+      pluginModal.style.display = 'none';
+    }
+  };
+
+  savePluginBtn.onclick = () => {
+    const name = pluginNameInput.value.trim();
+    const scriptUrl = pluginScriptInput.value.trim();
+    const configText = pluginConfigInput.value.trim();
+    if (!name || !scriptUrl) {
+      errorMsg.textContent = 'Please enter plugin name and script URL.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    let config = {};
+    if (configText) {
+      try {
+        config = JSON.parse(configText);
+      } catch (e) {
+        errorMsg.textContent = 'Invalid JSON configuration.';
+        errorMsg.style.display = 'block';
+        return;
+      }
+    }
+    const newPlugin = {
+      name: name,
+      scriptUrl: scriptUrl,
+      config: config,
+      active: false,
+      loaded: false
+    };
+    plugins.push(newPlugin);
+    renderPlugins();
+    loadPlugin(newPlugin);
+    pluginModal.style.display = 'none';
+  };
+
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data && data.pluginName && data.status) {
+      const plugin = plugins.find(p => p.name === data.pluginName
