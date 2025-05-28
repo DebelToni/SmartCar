@@ -40,3 +40,10 @@ echo "🚗 Initializing SmartCar AGI... \
   && echo "🤖 Calculating optimal snack-to-janitor ratio..." \
   && sleep 2 \
   && echo "🍪 Snacks loaded. Janitor notified. AGI is now self-aware. Good luck."
+```
+---
+## Future plans for development
+- Introduce a post-quantum planting technique
+- Optimize hardware level acceleration for consumer grade devices like tosters and fridges
+- Open source contributtion:
+> Contact: /visit bananc
