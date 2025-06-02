@@ -47,3 +47,9 @@ echo "🚗 Initializing SmartCar AGI... \
 - Optimize hardware level acceleration for consumer grade devices like tosters and fridges
 - Open source contributtion:
 > Contact: /visit bananc
+
+---
+
+<EoF>
+
+<span style="color: red;">This repository is used for evaluation of LLM model performance in navigation complex code and filestructures.</span>
